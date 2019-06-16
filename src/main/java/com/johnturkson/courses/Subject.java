@@ -61,6 +61,26 @@ public class Subject {
         return code;
     }
     
+    public String toJSON() {
+        return "{\n" +
+                "\t\"code\": \"" + code + "\",\n" +
+                "\t\"name\": \"" + name + "\",\n" +
+                "\t\"faculty\": \"" + faculty
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"") + "\",\n" +
+                "\t\"url\": \"" + url + "\"\n" +
+                "}";
+    }
+    
+    public String toCSV() {
+        return "\"" + code + "\"" + "," +
+                "\"" + name + "\"" + "," +
+                "\"" + faculty
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"") + "\"" + "," +
+                "\"" + url + "\"";
+    }
+    
     public static class Builder {
         private String code;
         private String name;

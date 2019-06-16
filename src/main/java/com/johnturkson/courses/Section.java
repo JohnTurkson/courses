@@ -104,6 +104,52 @@ public class Section {
                         .collect(Collectors.joining(", ")) + ")" + " - " + instructor;
     }
     
+    public String toJSON() {
+        return "{\n" +
+                "\t\"subject\": \"" + subject + "\",\n" +
+                "\t\"course\": \"" + course + "\",\n" +
+                "\t\"code\": \"" + code + "\",\n" +
+                "\t\"activity\": \"" + activity + "\",\n" +
+                "\t\"term\": " + term + ",\n" +
+                "\t\"schedule\": " + schedule.keySet()
+                .stream()
+                .map(k -> "\t\t{\n" +
+                        "\t\t\t\"days\": \"" + String.join(" ", k.getDays()) + "\",\n" +
+                        "\t\t\t\"startHour\": " + k.getStartHour() + ",\n" +
+                        "\t\t\t\"startMinute\": " + k.getStartMinute() + ",\n" +
+                        "\t\t\t\"endHour\": " + k.getEndHour() + ",\n" +
+                        "\t\t\t\"endMinute\": " + k.getEndMinute() + ",\n" +
+                        "\t\t\t\"name\": \"" + schedule.get(k).getName() + "\",\n" +
+                        "\t\t\t\"code\": \"" + schedule.get(k).getCode() + "\",\n" +
+                        "\t\t\t\"room\": \"" + schedule.get(k).getRoom() + "\"\n" +
+                        "\t\t}")
+                .collect(Collectors.joining(",\n", "[\n", "\n\t]")) + ",\n" +
+                "\t\"instructor\": \"" + instructor + "\",\n" +
+                "\t\"url\": \"" + url + "\"\n" +
+                "}";
+    }
+    
+    public String toCSV() {
+        return "\"" + subject + "\"," +
+                "\"" + course + "\"," +
+                "\"" + code + "\"," +
+                "\"" + activity + "\"," +
+                "\"" + term + "\"," +
+                "\"" + schedule.keySet()
+                .stream()
+                .map(k -> String.join(" ", k.getDays()) + "," +
+                        k.getStartHour() + "," +
+                        k.getStartMinute() + "," +
+                        k.getEndHour() + "," +
+                        k.getEndMinute() + "," +
+                        schedule.get(k).getName() + "," +
+                        schedule.get(k).getCode() + "," +
+                        schedule.get(k).getRoom())
+                .collect(Collectors.joining(",")) + "\"," +
+                "\"" + instructor + "\"," +
+                "\"" + url + "\"";
+    }
+    
     public static class Builder {
         private String subject;
         private String course;

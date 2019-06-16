@@ -2,6 +2,7 @@ package com.johnturkson.courses;
 
 import java.net.URL;
 import java.util.Objects;
+import java.util.regex.Matcher;
 
 public class Course {
     private String subject;
@@ -73,6 +74,30 @@ public class Course {
     @Override
     public String toString() {
         return subject + " " + code + ": " + name;
+    }
+    
+    public String toJSON() {
+        return "{\n" +
+                "\t\"subject\": \"" + subject + "\",\n" +
+                "\t\"code\": \"" + code + "\",\n" +
+                "\t\"name\": \"" + name + "\",\n" +
+                "\t\"description\": \"" + description
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"") + "\",\n" +
+                "\t\"credits\": " + credits + ",\n" +
+                "\t\"url\": \"" + url + "\"\n" +
+                "}";
+    }
+    
+    public String toCSV() {
+        return "\"" + subject + "\"," +
+                "\"" + code + "\"," +
+                "\"" + name + "\"," +
+                "\"" + description
+                .replace("\\", "\\\\")
+                .replace("\"", "\\\"") + "\"," +
+                "\"" + credits + "\"," +
+                "\"" + url + "\"";
     }
     
     public static class Builder {
