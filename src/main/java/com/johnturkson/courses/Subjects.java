@@ -57,7 +57,8 @@ public class Subjects {
                         .name(subjectMatcher.group("name").trim())
                         .faculty(subjectMatcher.group("faculty").trim())
                         .url(new URL("https://courses.students.ubc.ca" +
-                                subjectMatcher.group("url").replace("&amp;", "&")))
+                                subjectMatcher.group("url")
+                                        .replace("&amp;", "&")))
                         .build());
             } catch (MalformedURLException e) {
                 throw new UncheckedIOException(e);

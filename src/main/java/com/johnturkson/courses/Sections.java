@@ -2,15 +2,14 @@ package com.johnturkson.courses;
 
 import java.io.IOException;
 import java.io.UncheckedIOException;
-import java.net.MalformedURLException;
-import java.net.URI;
-import java.net.URL;
+import java.net.*;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -52,6 +51,7 @@ public class Sections {
                         .term(Integer.parseInt(sectionDetailsMatcher.group("term")))
                         .schedule(parseSectionSchedule(response))
                         .instructor(parseSectionInstructor(response))
+                        .seats(parseSeatInformation(response))
                         .url(new URL(query))
                         .build());
             } catch (MalformedURLException e) {
@@ -90,34 +90,42 @@ public class Sections {
                 "<td>(?<term>\\d+)</td>");
         Matcher sectionMatcher = sectionPattern.matcher(response);
         
+        Map<Section.Builder, CompletableFuture<String>> sectionBuilders = new LinkedHashMap<>();
+        
         while (sectionMatcher.find()) {
-            String details = HttpClient.newHttpClient()
-                    .sendAsync(HttpRequest.newBuilder()
-                            .uri(URI.create("https://courses.students.ubc.ca" +
-                                    sectionMatcher.group("url").replace("&amp;", "&")))
-                            .GET()
-                            .build(), HttpResponse.BodyHandlers.ofString())
-                    .join()
-                    .body();
-            
             try {
-                sections.add(Section.newBuilder()
+                Section.Builder partialBuilder = Section.newBuilder()
                         .subject(sectionMatcher.group("subject").trim())
                         .course(sectionMatcher.group("course").trim())
                         .code(sectionMatcher.group("code").trim())
                         .activity(sectionMatcher.group("activity").trim())
                         .term(Integer.parseInt(sectionMatcher.group("term").trim()))
-                        .schedule(parseSectionSchedule(details))
-                        .instructor(parseSectionInstructor(details))
+                        .status(sectionMatcher.group("status").trim())
                         .url(new URL("https://courses.students.ubc.ca" +
-                                sectionMatcher.group("url").replace("&amp;", "&")))
-                        .build());
+                                sectionMatcher.group("url").replace("&amp;", "&")));
+                CompletableFuture<String> remainingDetails = HttpClient.newHttpClient()
+                        .sendAsync(HttpRequest.newBuilder()
+                                .uri(URI.create("https://courses.students.ubc.ca" +
+                                        sectionMatcher.group("url").replace("&amp;", "&")))
+                                .GET()
+                                .build(), HttpResponse.BodyHandlers.ofString())
+                        .thenApply(HttpResponse::body);
+                sectionBuilders.put(partialBuilder, remainingDetails);
             } catch (MalformedURLException e) {
-                throw new UncheckedIOException(e);
+                e.printStackTrace();
             }
         }
-        
-        return new ArrayList<>(sections);
+    
+        return sectionBuilders.keySet().stream()
+                .map(b -> {
+                    String details = sectionBuilders.get(b).join();
+                    return b.schedule(parseSectionSchedule(details))
+                            .instructor(parseSectionInstructor(details))
+                            .seats(parseSeatInformation(details))
+                            .build();
+                })
+                .distinct()
+                .collect(Collectors.toList());
     }
     
     public static List<Section> getSections(Course course) {
@@ -151,6 +159,41 @@ public class Sections {
         return schedule;
     }
     
+    private static SeatInformation parseSeatInformation(String details) {
+        Pattern seatInformationPattern = Pattern.compile("<tr>" +
+                "<td[^>]*>Total Seats Remaining[^:]*:</td>" +
+                "<td[^>]*>(?:<[^>]*>)*(?<totalSeatsRemaining>\\d+)(?:</[^>]*>)*</td>" +
+                "</tr>\\s*" +
+                "<tr>" +
+                "<td[^>]*>Currently Registered[^:]*:</td>" +
+                "<td[^>]*>(?:<[^>]*>)*(?<currentlyRegistered>\\d+)(?:</[^>]*>)*</td>" +
+                "</tr>\\s*" +
+                "<tr>" +
+                "<td[^>]*>General Seats Remaining[^:]*:</td>" +
+                "<td[^>]*>(?:<[^>]*>)*(?<generalSeatsRemaining>\\d+)(?:</[^>]*>)*</td>" +
+                "</tr>\\s*" +
+                "<tr>" +
+                "<td[^>]*>Restricted Seats Remaining[^:]*:</td>" +
+                "<td[^>]*>(?:<[^>]*>)*(?<restrictedSeatsRemaining>\\d+)(?:</[^>]*>)*</td>" +
+                "</tr>");
+        Matcher seatInformationMatcher = seatInformationPattern.matcher(details);
+        if (seatInformationMatcher.find()) {
+            return SeatInformation.newBuilder()
+                    .totalSeatsRemaining(Integer.parseInt(seatInformationMatcher.group("totalSeatsRemaining")))
+                    .currentlyRegistered(Integer.parseInt(seatInformationMatcher.group("currentlyRegistered")))
+                    .generalSeatsRemaining(Integer.parseInt(seatInformationMatcher.group("generalSeatsRemaining")))
+                    .restrictedSeatsRemaining(Integer.parseInt(seatInformationMatcher.group("restrictedSeatsRemaining")))
+                    .build();
+        } else {
+            return SeatInformation.newBuilder()
+                    .totalSeatsRemaining(0)
+                    .currentlyRegistered(0)
+                    .generalSeatsRemaining(0)
+                    .restrictedSeatsRemaining(0)
+                    .build();
+        }
+    }
+    
     private static String parseSectionInstructor(String details) {
         Pattern instructorPattern = Pattern.compile("<td>Instructor:\\s*</td>" +
                 "<td>(?:<[^>]*>)?(?<instructor>[^<]*)(?:<[^>]*>)?</td>");
@@ -182,10 +225,25 @@ public class Sections {
                     "\"term\":\\s*(?<term>\\d+),\\s*" +
                     "\"schedule\":\\s*\\[\\s*(?<schedule>(?:(?:\\{.*?})(?:,.*?)*)?)\\s*],\\s*" +
                     "\"instructor\":\\s*\"(?<instructor>[^\"]*)\",\\s*" +
+                    "\"seats\":\\s*\\{\\s*" +
+                    "\"totalSeatsRemaining\":\\s*(?<totalSeatsRemaining>\\d+),\\s*" +
+                    "\"currentlyRegistered\":\\s*(?<currentlyRegistered>\\d+),\\s*" +
+                    "\"generalSeatsRemaining\":\\s*(?<generalSeatsRemaining>\\d+),\\s*" +
+                    "\"restrictedSeatsRemaining\":\\s*(?<restrictedSeatsRemaining>\\d+)\\s*" +
+                    "},\\s*" +
                     "\"url\":\\s*\"(?<url>[^\"]*)\"\\s*" +
                     "}");
             Matcher sectionMatcher = sectionPattern.matcher(json);
-            return extractSections(sectionMatcher, "JSON");
+            Pattern schedulePattern = Pattern.compile("\\{\\s*" +
+                    "\"days\":\\s*\"(?<days>[^\"]*)\",\\s*" +
+                    "\"startHour\":\\s*(?<startHour>[0]?[0-9]|[1][0-9]|[2][0-3]),\\s*" +
+                    "\"startMinute\":\\s*(?<startMinute>[0]?[0-9]|[1-5][0-9]),\\s*" +
+                    "\"endHour\":\\s*(?<endHour>[0]?[0-9]|[1][0-9]|[2][0-3]),\\s*" +
+                    "\"endMinute\":\\s*(?<endMinute>[0]?[0-9]|[1-5][0-9]),\\s*" +
+                    "\"name\":\\s*\"(?<name>[^\"]*)\",\\s*" +
+                    "\"code\":\\s*\"(?<code>[^\"]*)\",\\s*" +
+                    "\"room\":\\s*\"(?<room>[^\"]*)\"\\s*}");
+            return extractSections(sectionMatcher, schedulePattern);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
@@ -201,6 +259,7 @@ public class Sections {
         }
     }
     
+    // TODO seats
     public static List<Section> importFromCSV(Path location) {
         try {
             String json = Files.readString(location);
@@ -213,45 +272,24 @@ public class Sections {
                     "\"(?<instructor>[^\"]*)\"," +
                     "\"(?<url>[^\"]*)\"");
             Matcher sectionMatcher = sectionPattern.matcher(json);
-            return extractSections(sectionMatcher, "CSV");
+            Pattern schedulePattern = Pattern.compile("(?<days>[^,]*)," +
+                    "(?<startHour>[0]?[0-9]|[1][0-9]|[2][0-3])," +
+                    "(?<startMinute>[0]?[0-9]|[1-5][0-9])," +
+                    "(?<endHour>[0]?[0-9]|[1][0-9]|[2][0-3])," +
+                    "(?<endMinute>[0]?[0-9]|[1-5][0-9])," +
+                    "(?<name>[^,]*)," +
+                    "(?<code>[^,]*)," +
+                    "(?<room>[^,]*)");
+            return extractSections(sectionMatcher, schedulePattern);
         } catch (IOException e) {
             throw new UncheckedIOException(e);
         }
     }
     
-    private static List<Section> extractSections(Matcher sectionMatcher, String format) {
+    private static List<Section> extractSections(Matcher sectionMatcher, Pattern schedulePattern) {
         Set<Section> sections = new LinkedHashSet<>();
         while (sectionMatcher.find()) {
-            Map<Time, Location> schedule;
-            Pattern schedulePattern;
-            Matcher scheduleMatcher;
-            if (format.equals("JSON")) {
-                schedulePattern = Pattern.compile("\\{\\s*" +
-                        "\"days\":\\s*\"(?<days>[^\"]*)\",\\s*" +
-                        "\"startHour\":\\s*(?<startHour>[0]?[0-9]|[1][0-9]|[2][0-3]),\\s*" +
-                        "\"startMinute\":\\s*(?<startMinute>[0]?[0-9]|[1-5][0-9]),\\s*" +
-                        "\"endHour\":\\s*(?<endHour>[0]?[0-9]|[1][0-9]|[2][0-3]),\\s*" +
-                        "\"endMinute\":\\s*(?<endMinute>[0]?[0-9]|[1-5][0-9]),\\s*" +
-                        "\"name\":\\s*\"(?<name>[^\"]*)\",\\s*" +
-                        "\"code\":\\s*\"(?<code>[^\"]*)\",\\s*" +
-                        "\"room\":\\s*\"(?<room>[^\"]*)\"\\s*}");
-                scheduleMatcher = schedulePattern.matcher(sectionMatcher.group("schedule"));
-                schedule = parseSchedule(scheduleMatcher);
-            } else if (format.equals("CSV")) {
-                schedulePattern = Pattern.compile("(?<days>[^,]*)," +
-                        "(?<startHour>[0]?[0-9]|[1][0-9]|[2][0-3])," +
-                        "(?<startMinute>[0]?[0-9]|[1-5][0-9])," +
-                        "(?<endHour>[0]?[0-9]|[1][0-9]|[2][0-3])," +
-                        "(?<endMinute>[0]?[0-9]|[1-5][0-9])," +
-                        "(?<name>[^,]*)," +
-                        "(?<code>[^,]*)," +
-                        "(?<room>[^,]*)");
-                scheduleMatcher = schedulePattern.matcher(sectionMatcher.group("schedule"));
-                schedule = parseSchedule(scheduleMatcher);
-            } else {
-                throw new IllegalArgumentException("Unsupported format: " + format);
-            }
-            
+            Matcher scheduleMatcher = schedulePattern.matcher(sectionMatcher.group("schedule"));
             try {
                 sections.add(Section.newBuilder()
                         .subject(sectionMatcher.group("subject"))
@@ -259,8 +297,14 @@ public class Sections {
                         .code(sectionMatcher.group("code"))
                         .activity(sectionMatcher.group("activity"))
                         .term(Integer.parseInt(sectionMatcher.group("term")))
-                        .schedule(schedule)
+                        .schedule(parseSchedule(scheduleMatcher))
                         .instructor(sectionMatcher.group("instructor"))
+                        .seats(SeatInformation.newBuilder()
+                                .totalSeatsRemaining(Integer.parseInt(sectionMatcher.group("totalSeatsRemaining")))
+                                .currentlyRegistered(Integer.parseInt(sectionMatcher.group("currentlyRegistered")))
+                                .generalSeatsRemaining(Integer.parseInt(sectionMatcher.group("generalSeatsRemaining")))
+                                .restrictedSeatsRemaining(Integer.parseInt(sectionMatcher.group("restrictedSeatsRemaining")))
+                                .build())
                         .url(new URL(sectionMatcher.group("url")))
                         .build());
             } catch (MalformedURLException e) {

@@ -11,6 +11,7 @@ import java.net.http.HttpResponse;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.*;
+import java.util.concurrent.CompletableFuture;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
@@ -89,44 +90,51 @@ public class Courses {
                 "</tr>");
         Matcher courseMatcher = coursePattern.matcher(response);
         
+        Map<Course.Builder, CompletableFuture<String>> courseBuilders = new LinkedHashMap<>();
+        
         while (courseMatcher.find()) {
-            String details = HttpClient.newHttpClient()
-                    .sendAsync(HttpRequest.newBuilder()
-                                    .uri(URI.create("https://courses.students.ubc.ca" +
-                                            courseMatcher.group("url").replace("&amp;", "&")))
-                                    .GET()
-                                    .build(),
-                            HttpResponse.BodyHandlers.ofString())
-                    .join()
-                    .body();
-            
-            Pattern courseDetailsPattern = Pattern.compile("<[^>]*>" +
-                    "(?<subject>[^\\s]+)\\s" +
-                    "(?<code>[^\\s]+)\\s" +
-                    "(?<name>[^<]+)" +
-                    "</[^>]*>" +
-                    "<p>(?<description>[^<]*)</p>" +
-                    ".+?" +
-                    "<p>Credits:\\s(?<credits>\\d+)</p>");
+            try {
+                Course.Builder partialBuilder = Course.newBuilder()
+                        .subject(courseMatcher.group("subject").trim())
+                        .code(courseMatcher.group("code").trim())
+                        .name(courseMatcher.group("name").trim())
+                        .url(new URL("https://courses.students.ubc.ca" +
+                                courseMatcher.group("url").replace("&amp;", "&")));
+                CompletableFuture<String> remainingDetails = HttpClient.newHttpClient()
+                        .sendAsync(HttpRequest.newBuilder()
+                                .uri(URI.create("https://courses.students.ubc.ca" +
+                                        courseMatcher.group("url")
+                                                .replace("&amp;", "&")))
+                                .GET()
+                                .build(), HttpResponse.BodyHandlers.ofString())
+                        .thenApply(HttpResponse::body);
+                courseBuilders.put(partialBuilder, remainingDetails);
+            } catch (MalformedURLException e) {
+                e.printStackTrace();
+            }
+        }
+        
+        Pattern courseDetailsPattern = Pattern.compile("<[^>]*>" +
+                "(?<subject>[^\\s]+)\\s" +
+                "(?<code>[^\\s]+)\\s" +
+                "(?<name>[^<]+)" +
+                "</[^>]*>" +
+                "<p>(?<description>[^<]*)</p>" +
+                ".+?" +
+                "<p>Credits:\\s(?<credits>\\d+)</p>");
+        
+        for (Course.Builder b : courseBuilders.keySet()) {
+            String details = courseBuilders.get(b).join();
             Matcher courseDetailsMatcher = courseDetailsPattern.matcher(details);
-            
             if (courseDetailsMatcher.find()) {
-                try {
-                    courses.add(Course.newBuilder()
-                            .subject(courseMatcher.group("subject").trim())
-                            .code(courseMatcher.group("code").trim())
-                            .name(courseMatcher.group("name").trim())
-                            .description(courseDetailsMatcher.group("description")
-                                    .trim()
-                                    .replace("\\\\", "\\")
-                                    .replace("\\\"", "\""))
-                            .credits(Integer.parseInt(courseDetailsMatcher.group("credits")))
-                            .url(new URL("https://courses.students.ubc.ca" +
-                                    courseMatcher.group("url").replace("&amp;", "&")))
-                            .build());
-                } catch (MalformedURLException e) {
-                    throw new UncheckedIOException(e);
-                }
+                courses.add(b.description(courseDetailsMatcher.group("description")
+                        .trim()
+                        .replace("\\\\", "\\")
+                        .replace("\\\"", "\""))
+                        .credits(Integer.parseInt(courseDetailsMatcher.group("credits")))
+                        .build());
+                
+                
             }
         }
         

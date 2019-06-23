@@ -15,9 +15,11 @@ public class Section {
     private int term;
     private Map<Time, Location> schedule;
     private String instructor;
+    private String status;
+    private SeatInformation seats;
     private URL url;
     
-    private Section(String subject, String course, String code, String activity, int term, Map<Time, Location> schedule, String instructor, URL url) {
+    private Section(String subject, String course, String code, String activity, int term, Map<Time, Location> schedule, String instructor, String status, SeatInformation seats, URL url) {
         this.subject = subject;
         this.course = course;
         this.code = code;
@@ -25,6 +27,8 @@ public class Section {
         this.term = term;
         this.schedule = schedule;
         this.instructor = instructor;
+        this.status = status;
+        this.seats = seats;
         this.url = url;
     }
     
@@ -60,6 +64,14 @@ public class Section {
         return instructor;
     }
     
+    public String getStatus() {
+        return status;
+    }
+    
+    public SeatInformation getSeats() {
+        return seats;
+    }
+    
     public URL getUrl() {
         return url;
     }
@@ -86,24 +98,25 @@ public class Section {
                 Objects.equals(course, section.course) &&
                 Objects.equals(code, section.code) &&
                 Objects.equals(activity, section.activity) &&
-                Objects.equals(schedule, section.schedule) &&
-                Objects.equals(instructor, section.instructor) &&
                 Objects.equals(url, section.url);
     }
     
     @Override
     public int hashCode() {
-        return Objects.hash(subject, course, code, activity, term, schedule, instructor, url);
+        return Objects.hash(subject, course, code, activity, term, url);
     }
     
     @Override
     public String toString() {
-        return subject + " " + course + " " + code + " (" +
+        return (status.equals("") ? status : "[" + status + "] ") +
+                subject + " " + course + " " + code + " (" +
                 schedule.keySet().stream()
                         .map(k -> k.toString() + " [" + schedule.get(k) + "]")
-                        .collect(Collectors.joining(", ")) + ")" + " - " + instructor;
+                        .collect(Collectors.joining(", ")) + ")" + " - " +
+                instructor + ", " + seats.getTotalSeatsRemaining() + " of " + seats.getTotalSeats() + " seats remaining";
     }
     
+    // TODO add seats to json and csv import/export
     public String toJSON() {
         return "{\n" +
                 "\t\"subject\": \"" + subject + "\",\n" +
@@ -125,6 +138,12 @@ public class Section {
                         "\t\t}")
                 .collect(Collectors.joining(",\n", "[\n", "\n\t]")) + ",\n" +
                 "\t\"instructor\": \"" + instructor + "\",\n" +
+                "\t\"seats\": {\n" +
+                "\t\t\"totalSeatsRemaining\": " + seats.getTotalSeatsRemaining() + ",\n" +
+                "\t\t\"currentlyRegistered\": " + seats.getCurrentlyRegistered() + ",\n" +
+                "\t\t\"generalSeatsRemaining\": " + seats.getTotalSeatsRemaining() + ",\n" +
+                "\t\t\"restrictedSeatsRemaining\": " + seats.getTotalSeatsRemaining() + "\n" +
+                "\t}\n" +
                 "\t\"url\": \"" + url + "\"\n" +
                 "}";
     }
@@ -135,8 +154,7 @@ public class Section {
                 "\"" + code + "\"," +
                 "\"" + activity + "\"," +
                 "\"" + term + "\"," +
-                "\"" + schedule.keySet()
-                .stream()
+                "\"" + schedule.keySet().stream()
                 .map(k -> String.join(" ", k.getDays()) + "," +
                         k.getStartHour() + "," +
                         k.getStartMinute() + "," +
@@ -147,6 +165,10 @@ public class Section {
                         schedule.get(k).getRoom())
                 .collect(Collectors.joining(",")) + "\"," +
                 "\"" + instructor + "\"," +
+                "\"" + seats.getTotalSeatsRemaining() + " " +
+                seats.getCurrentlyRegistered() + " " +
+                seats.getGeneralSeatsRemaining() + " " +
+                seats.getRestrictedSeatsRemaining() + "\"" +
                 "\"" + url + "\"";
     }
     
@@ -158,6 +180,8 @@ public class Section {
         private int term;
         private Map<Time, Location> schedule;
         private String instructor;
+        private String status;
+        private SeatInformation seats;
         private URL url;
         
         public Builder subject(String subject) {
@@ -195,13 +219,23 @@ public class Section {
             return this;
         }
         
+        public Builder status(String status) {
+            this.status = status;
+            return this;
+        }
+        
+        public Builder seats(SeatInformation seats) {
+            this.seats = seats;
+            return this;
+        }
+        
         public Builder url(URL url) {
             this.url = url;
             return this;
         }
         
         public Section build() {
-            return new Section(subject, course, code, activity, term, schedule, instructor, url);
+            return new Section(subject, course, code, activity, term, schedule, instructor, status, seats, url);
         }
     }
 }
