@@ -1,18 +1,34 @@
 package com.johnturkson.courses;
 
+import java.nio.file.Paths;
 import java.time.Instant;
 import java.util.List;
+import java.util.TimerTask;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String... args) {
-        Instant start = Instant.now();
-        List<Section> cpsc313 = Sections.getSections("CPSC", "210").stream()
-                .filter(s -> s.getActivity().matches("Laboratory"))
+        // InformationRetriever retriever = InformationRetriever.newBuilder()
+        //         .endpoint("https://courses.students.ubc.ca")
+        //         .year(2019)
+        //         .session(Session.WINTER)
+        //         .build();
+    
+        Timetable t = Timetable.newBuilder().build();
+        List<Section> cpsc210Labs = Sections.getSections("CPSC", "213").stream()
+                .filter(s -> s.getActivity().matches("Lecture"))
                 .collect(Collectors.toList());
-        cpsc313.forEach(s -> System.out.println(s + "\n" + s.getSeats() + "\n"));
-        Instant end = Instant.now();
-        System.out.println(end.toEpochMilli() - start.toEpochMilli());
+        
+        System.out.println(t.generateColumns(cpsc210Labs));
+    
+        // Instant start = Instant.now();
+        // List<Section> cpsc313 = Sections.getSections("MATH", "221").stream()
+        //         .filter(s -> s.getActivity().matches("Lecture"))
+        //         .collect(Collectors.toList());
+        // cpsc313.forEach(s -> System.out.println(s + "\n" + s.getSeats() + "\n"));
+        // Instant end = Instant.now();
+        // System.out.println(end.toEpochMilli() - start.toEpochMilli());
         
         // List<Subject> subjects = Subjects.importFromJSON(Paths.get("./src/main/resources/subjects.json"));
         // List<Course> courses = Courses.importFromJSON(Paths.get("./src/main/resources/CPSC.json"));
@@ -58,5 +74,6 @@ public class Main {
         //        
         //     }
         // }
+    
     }
 }

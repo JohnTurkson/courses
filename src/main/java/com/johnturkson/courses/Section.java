@@ -1,6 +1,5 @@
 package com.johnturkson.courses;
 
-import java.net.URL;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -17,9 +16,9 @@ public class Section {
     private String instructor;
     private String status;
     private SeatInformation seats;
-    private URL url;
+    private String url;
     
-    private Section(String subject, String course, String code, String activity, int term, Map<Time, Location> schedule, String instructor, String status, SeatInformation seats, URL url) {
+    private Section(String subject, String course, String code, String activity, int term, Map<Time, Location> schedule, String instructor, String status, SeatInformation seats, String url) {
         this.subject = subject;
         this.course = course;
         this.code = code;
@@ -72,7 +71,7 @@ public class Section {
         return seats;
     }
     
-    public URL getUrl() {
+    public String getUrl() {
         return url;
     }
     
@@ -138,12 +137,13 @@ public class Section {
                         "\t\t}")
                 .collect(Collectors.joining(",\n", "[\n", "\n\t]")) + ",\n" +
                 "\t\"instructor\": \"" + instructor + "\",\n" +
+                "\t\"status\": \"" + status + "\",\n" + 
                 "\t\"seats\": {\n" +
                 "\t\t\"totalSeatsRemaining\": " + seats.getTotalSeatsRemaining() + ",\n" +
                 "\t\t\"currentlyRegistered\": " + seats.getCurrentlyRegistered() + ",\n" +
                 "\t\t\"generalSeatsRemaining\": " + seats.getTotalSeatsRemaining() + ",\n" +
                 "\t\t\"restrictedSeatsRemaining\": " + seats.getTotalSeatsRemaining() + "\n" +
-                "\t}\n" +
+                "\t},\n" +
                 "\t\"url\": \"" + url + "\"\n" +
                 "}";
     }
@@ -165,10 +165,11 @@ public class Section {
                         schedule.get(k).getRoom())
                 .collect(Collectors.joining(",")) + "\"," +
                 "\"" + instructor + "\"," +
-                "\"" + seats.getTotalSeatsRemaining() + " " +
-                seats.getCurrentlyRegistered() + " " +
-                seats.getGeneralSeatsRemaining() + " " +
-                seats.getRestrictedSeatsRemaining() + "\"" +
+                "\"" + status + "\"," +
+                "\"" + seats.getTotalSeatsRemaining() + "," +
+                seats.getCurrentlyRegistered() + "," +
+                seats.getGeneralSeatsRemaining() + "," +
+                seats.getRestrictedSeatsRemaining() + "\"," +
                 "\"" + url + "\"";
     }
     
@@ -182,7 +183,7 @@ public class Section {
         private String instructor;
         private String status;
         private SeatInformation seats;
-        private URL url;
+        private String url;
         
         public Builder subject(String subject) {
             this.subject = subject;
@@ -229,7 +230,7 @@ public class Section {
             return this;
         }
         
-        public Builder url(URL url) {
+        public Builder url(String url) {
             this.url = url;
             return this;
         }

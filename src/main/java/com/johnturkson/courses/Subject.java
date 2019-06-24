@@ -1,15 +1,14 @@
 package com.johnturkson.courses;
 
-import java.net.URL;
 import java.util.Objects;
 
 public class Subject {
     private String code;
     private String name;
     private String faculty;
-    private URL url;
+    private String url;
     
-    private Subject(String code, String name, String faculty, URL url) {
+    private Subject(String code, String name, String faculty, String url) {
         this.code = code;
         this.name = name;
         this.faculty = faculty;
@@ -32,7 +31,7 @@ public class Subject {
         return faculty;
     }
     
-    public URL getUrl() {
+    public String getUrl() {
         return url;
     }
     
@@ -85,7 +84,7 @@ public class Subject {
         private String code;
         private String name;
         private String faculty;
-        private URL url;
+        private String url;
         
         public Builder code(String code) {
             this.code = code;
@@ -102,7 +101,7 @@ public class Subject {
             return this;
         }
         
-        public Builder url(URL url) {
+        public Builder url(String url) {
             this.url = url;
             return this;
         }
