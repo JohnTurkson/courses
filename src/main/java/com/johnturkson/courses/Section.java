@@ -14,11 +14,10 @@ public class Section {
     private int term;
     private Map<Time, Location> schedule;
     private String instructor;
-    private String status;
     private SeatInformation seats;
     private String url;
     
-    private Section(String subject, String course, String code, String activity, int term, Map<Time, Location> schedule, String instructor, String status, SeatInformation seats, String url) {
+    private Section(String subject, String course, String code, String activity, int term, Map<Time, Location> schedule, String instructor, SeatInformation seats, String url) {
         this.subject = subject;
         this.course = course;
         this.code = code;
@@ -26,7 +25,6 @@ public class Section {
         this.term = term;
         this.schedule = schedule;
         this.instructor = instructor;
-        this.status = status;
         this.seats = seats;
         this.url = url;
     }
@@ -61,10 +59,6 @@ public class Section {
     
     public String getInstructor() {
         return instructor;
-    }
-    
-    public String getStatus() {
-        return status;
     }
     
     public SeatInformation getSeats() {
@@ -107,15 +101,13 @@ public class Section {
     
     @Override
     public String toString() {
-        return (status.equals("") ? status : "[" + status + "] ") +
-                subject + " " + course + " " + code + " (" +
+        return subject + " " + course + " " + code + " (" +
                 schedule.keySet().stream()
                         .map(k -> k.toString() + " [" + schedule.get(k) + "]")
                         .collect(Collectors.joining(", ")) + ")" + " - " +
                 instructor + ", " + seats.getTotalSeatsRemaining() + " of " + seats.getTotalSeats() + " seats remaining";
     }
     
-    // TODO add seats to json and csv import/export
     public String toJSON() {
         return "{\n" +
                 "\t\"subject\": \"" + subject + "\",\n" +
@@ -137,7 +129,6 @@ public class Section {
                         "\t\t}")
                 .collect(Collectors.joining(",\n", "[\n", "\n\t]")) + ",\n" +
                 "\t\"instructor\": \"" + instructor + "\",\n" +
-                "\t\"status\": \"" + status + "\",\n" + 
                 "\t\"seats\": {\n" +
                 "\t\t\"totalSeatsRemaining\": " + seats.getTotalSeatsRemaining() + ",\n" +
                 "\t\t\"currentlyRegistered\": " + seats.getCurrentlyRegistered() + ",\n" +
@@ -165,7 +156,6 @@ public class Section {
                         schedule.get(k).getRoom())
                 .collect(Collectors.joining(",")) + "\"," +
                 "\"" + instructor + "\"," +
-                "\"" + status + "\"," +
                 "\"" + seats.getTotalSeatsRemaining() + "," +
                 seats.getCurrentlyRegistered() + "," +
                 seats.getGeneralSeatsRemaining() + "," +
@@ -181,7 +171,6 @@ public class Section {
         private int term;
         private Map<Time, Location> schedule;
         private String instructor;
-        private String status;
         private SeatInformation seats;
         private String url;
         
@@ -220,11 +209,6 @@ public class Section {
             return this;
         }
         
-        public Builder status(String status) {
-            this.status = status;
-            return this;
-        }
-        
         public Builder seats(SeatInformation seats) {
             this.seats = seats;
             return this;
@@ -236,7 +220,7 @@ public class Section {
         }
         
         public Section build() {
-            return new Section(subject, course, code, activity, term, schedule, instructor, status, seats, url);
+            return new Section(subject, course, code, activity, term, schedule, instructor, seats, url);
         }
     }
 }

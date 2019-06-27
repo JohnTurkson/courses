@@ -1,27 +1,66 @@
 package com.johnturkson.courses;
 
 import java.nio.file.Paths;
-import java.time.Instant;
+import java.time.Duration;
+import java.util.Collection;
 import java.util.List;
-import java.util.TimerTask;
-import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 public class Main {
     public static void main(String... args) {
+        System.out.println("Tracking:");
+    
+        // List<String> codes = List.of("304", "310", "311", "312", "313", "320", "322");
+    
+        List<Section> sections = Courses.getCourses("CPSC").stream()
+                // .filter(c -> codes.contains(c.getCode()))
+                .map(c -> Sections.getSections(c.getSubject(), c.getCode()))
+                .flatMap(Collection::stream)
+                .filter(s -> s.getActivity().matches("Lecture"))
+                // .filter(s -> s.getTerm() == 1)
+                .collect(Collectors.toList());
+    
+        sections.forEach(System.out::println);
+    
+        SectionTracker tracker = SectionTracker.newBuilder()
+                .trackedSections(sections)
+                .build();
+        tracker.printUpdates(true);
+        tracker.exportUpdates(true);
+    
+        tracker.exportTo(Paths.get("./src/main/resources/updates.txt"));
+    
+        // if (System.getProperty("os.name").contains("Windows")) {
+        //     tracker.exportTo(Paths.get("C://Users/John/Desktop/updates.txt"));
+        // } else if (System.getProperty("os.name").contains("Mac")) {
+        //     // ?  
+        // } else if (System.getProperty("os.name").contains("Linux")) {
+        //     tracker.exportTo(Paths.get("/mnt/c/users/john/desktop/updates.txt"));
+        // }
+    
+        tracker.startTracking(Duration.ofSeconds(60 * 5));
+    
+        // List<Course> cpsc = Courses.getCourses("CPSC");
+        // Courses.exportAsJSON(cpsc, Paths.get("./src/main/resources/CPSC.json"));
+        //
+        // for (Course c : cpsc) {
+        //     Sections.exportAsJSON(Sections.getSections(c), Paths.get("./src/main/resources/" + c.getSubject() + c.getCode() + ".json"));
+        //     System.out.println(c);
+        // }
+        
         // InformationRetriever retriever = InformationRetriever.newBuilder()
         //         .endpoint("https://courses.students.ubc.ca")
         //         .year(2019)
         //         .session(Session.WINTER)
         //         .build();
     
-        Timetable t = Timetable.newBuilder().build();
-        List<Section> cpsc210Labs = Sections.getSections("CPSC", "213").stream()
-                .filter(s -> s.getActivity().matches("Lecture"))
-                .collect(Collectors.toList());
+        // Timetable t = Timetable.newBuilder().build();
+        // List<Section> cpsc210Labs = Sections.importFromJSON(Paths.get("./src/main/resources/CPSC210.json")).stream()
+        //         .filter(s -> s.getTerm() == 1)
+        //         .collect(Collectors.toList());
+        //
+        // System.out.println(t.generateTimetable(cpsc210Labs));
         
-        System.out.println(t.generateColumns(cpsc210Labs));
-    
         // Instant start = Instant.now();
         // List<Section> cpsc313 = Sections.getSections("MATH", "221").stream()
         //         .filter(s -> s.getActivity().matches("Lecture"))

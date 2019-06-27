@@ -94,7 +94,6 @@ public class Sections {
                     .code(sectionMatcher.group("code").trim())
                     .activity(sectionMatcher.group("activity").trim())
                     .term(Integer.parseInt(sectionMatcher.group("term").trim()))
-                    .status(sectionMatcher.group("status").trim())
                     .url("https://courses.students.ubc.ca" +
                             sectionMatcher.group("url")
                                     .replace("&amp;", "&"));
@@ -218,7 +217,6 @@ public class Sections {
                     "\"term\": (?<term>\\d+),\\n\\t\\t" +
                     "\"schedule\": \\[\\n\\t\\t\\t(?<schedule>\\{[^}]*})\\n\\t\\t],\\n\\t\\t" +
                     "\"instructor\": \"(?<instructor>[^\"]*)\",\\n\\t\\t" +
-                    "\"status\": \"(?<status>[^\"]*)\",\\n\\t\\t" +
                     "\"seats\": \\{\\n\\t\\t\\t" +
                     "\"totalSeatsRemaining\": (?<totalSeatsRemaining>\\d+),\\n\\t\\t\\t" +
                     "\"currentlyRegistered\": (?<currentlyRegistered>\\d+),\\n\\t\\t\\t" +
@@ -264,7 +262,6 @@ public class Sections {
                     "\"(?<term>\\d+)\"," +
                     "\"(?<schedule>[^\"]*)\"," +
                     "\"(?<instructor>[^\"]*)\"," +
-                    "\"(?<status>[^\"]*)\"," +
                     "\"(?<totalSeatsRemaining>\\d+)," +
                     "(?<currentlyRegistered>\\d+)," +
                     "(?<generalSeatsRemaining>\\d+)," +
@@ -297,7 +294,6 @@ public class Sections {
                     .term(Integer.parseInt(sectionMatcher.group("term")))
                     .schedule(parseSchedule(scheduleMatcher))
                     .instructor(sectionMatcher.group("instructor"))
-                    .status(sectionMatcher.group("status"))
                     .seats(SeatInformation.newBuilder()
                             .totalSeatsRemaining(Integer.parseInt(sectionMatcher.group("totalSeatsRemaining")))
                             .currentlyRegistered(Integer.parseInt(sectionMatcher.group("currentlyRegistered")))

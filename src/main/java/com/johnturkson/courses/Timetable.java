@@ -20,14 +20,11 @@ public class Timetable {
     
     private Map<Integer, List<Section>> getCoursesMappedByTerm(List<Section> sections) {
         Map<Integer, List<Section>> mappedCourses = new TreeMap<>();
-        
-        for (Section s : sections) {
-            if (mappedCourses.get(s.getTerm()) != null) {
-                mappedCourses.get(s.getTerm()).add(s);
-            } else {
-                mappedCourses.put(s.getTerm(), List.of(s));
-            }
-        }
+    
+        sections.forEach(s -> {
+            mappedCourses.computeIfAbsent(s.getTerm(), k -> new ArrayList<>());
+            mappedCourses.get(s.getTerm()).add(s);
+        });
         
         return mappedCourses;
     }
@@ -72,6 +69,20 @@ public class Timetable {
                 (t1EndTime <= t2EndTime && t1EndTime > t2StartTime);
     }
     
+    public String generateTimetable() {
+        String timetable = "";
+        
+        Map<Integer, List<Section>> mappedCourses = getCoursesMappedByTerm(sections);
+        
+        for (Integer term : mappedCourses.keySet()) {
+            timetable += center("Term " + term, ROW_HEADER_WIDTH + COLUMN_WIDTH * 5) + "\n";
+            timetable += generateColumns(mappedCourses.get(term));
+            timetable += "\n";
+        }
+        
+        return timetable;
+    }
+    
     public String generateColumns(List<Section> sections) {
         sections = removeConflictingSections(sections);
         
@@ -87,8 +98,8 @@ public class Timetable {
                 }
             }
             columns = combineColumns(columns, column);
-            
         }
+    
         return columns;
     }
     
@@ -119,8 +130,6 @@ public class Timetable {
         lines.set(startRow + (endRow - startRow) / 2, "|" +
                 center(section.getSubject() + " " + section.getCourse() + " " +
                         section.getCode(), COLUMN_WIDTH - 2) + "|");
-        lines.set(startRow + (endRow - startRow) / 2 + 1, "|" +
-                center(section.getInstructor(), COLUMN_WIDTH - 2) + "|");
         
         return String.join("\n", lines);
     }
@@ -195,7 +204,7 @@ public class Timetable {
     
     @Override
     public String toString() {
-        return null;
+        return generateTimetable();
     }
     
     public static class Builder {
